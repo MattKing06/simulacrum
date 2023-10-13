@@ -60,16 +60,16 @@ class ModelService:
         initial_rmat_table['timeStamp']['nanoseconds'] = nanosec
         self.live_twiss_pv = SharedPV(nt=self.twiss_table, 
                            initial=initial_twiss_table,
-                           loop=None)#self.loop)
+                           loop=self.loop)
         self.design_twiss_pv = SharedPV(nt=self.twiss_table, 
                            initial=initial_twiss_table,
-                           loop=None)#self.loop)
+                           loop=self.loop)
         self.live_rmat_pv = SharedPV(nt=self.rmat_table, 
                            initial=initial_rmat_table,
-                           loop=None)#self.loop)
+                           loop=self.loop)
         self.design_rmat_pv = SharedPV(nt=self.rmat_table, 
                            initial=initial_rmat_table,
-                           loop=None)#self.loop)
+                           loop=self.loop)
         self.screens = self.get_screens()
         self.bpms = self.get_bpms()
         self.recalc_needed = False
@@ -95,8 +95,8 @@ class ModelService:
             broadcast_task.cancel()
             pva_server.stop()
         finally:
-            self.loop.close()
-            L.info("Model Service shutdown complete.")
+           self.loop.close()
+           L.info("Model Service shutdown complete.")
     
     def get_twiss_table(self):
         """
@@ -231,7 +231,7 @@ class ModelService:
         return np.stack((x_orb, y_orb, e))
 
     def get_screens(self):
-        screen_elements = self.tao_cmd('show ele monitor::YAG*,monitor::OTR*')[:-1]
+        screen_elements = self.tao_cmd('show ele Instrument::YAG*,Instrument::OTR*')[:-1]
         zs = [float(row.split()[2]) for row in screen_elements]
         names = [row.split()[1] for row in screen_elements]
         return np.sort(np.array(
@@ -394,7 +394,7 @@ def find_model(model_name):
     assert os.path.exists(tao_initfile), 'Error: file does not exist: ' + tao_initfile
     return tao_initfile
 
-async def main():
+def main():
     parser = argparse.ArgumentParser(description="Simulacrum Model Service")
     parser.add_argument(
         'model_name',
@@ -419,5 +419,5 @@ async def main():
 
 if __name__=="__main__":
     main_loop = asyncio.new_event_loop()
-    main_loop.run_until_complete(main())
+    main()
 
