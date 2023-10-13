@@ -36,6 +36,8 @@ class ModelService:
         self.model_broadcast_socket = zmq.Context().socket(zmq.PUB)
         self.model_broadcast_socket.bind("tcp://*:{}".format(os.environ.get('MODEL_BROADCAST_PORT', 66666)))
         self.loop = asyncio.get_event_loop()
+        if not self.loop.is_running():
+            print('no running event loop in thread.')
         self.jitter_enabled = enable_jitter
         self.twiss_table = NTTable([("element", "s"), ("device_name", "s"),
                                        ("s", "d"), ("length", "d"), ("p0c", "d"),
@@ -58,16 +60,16 @@ class ModelService:
         initial_rmat_table['timeStamp']['nanoseconds'] = nanosec
         self.live_twiss_pv = SharedPV(nt=self.twiss_table, 
                            initial=initial_twiss_table,
-                           loop=self.loop)
+                           loop=None)#self.loop)
         self.design_twiss_pv = SharedPV(nt=self.twiss_table, 
                            initial=initial_twiss_table,
-                           loop=self.loop)
+                           loop=None)#self.loop)
         self.live_rmat_pv = SharedPV(nt=self.rmat_table, 
                            initial=initial_rmat_table,
-                           loop=self.loop)
+                           loop=None)#self.loop)
         self.design_rmat_pv = SharedPV(nt=self.rmat_table, 
                            initial=initial_rmat_table,
-                           loop=self.loop)
+                           loop=None)#self.loop)
         self.screens = self.get_screens()
         self.bpms = self.get_bpms()
         self.recalc_needed = False
@@ -392,7 +394,7 @@ def find_model(model_name):
     assert os.path.exists(tao_initfile), 'Error: file does not exist: ' + tao_initfile
     return tao_initfile
 
-if __name__=="__main__":
+async def main():
     parser = argparse.ArgumentParser(description="Simulacrum Model Service")
     parser.add_argument(
         'model_name',
@@ -410,8 +412,12 @@ if __name__=="__main__":
         help='Show tao plot'
     )
     model_service_args = parser.parse_args()
-    tao_init_file = find_model(model_service_args.model_name)
+    tao_init_file = find_model(model_service_args.model_name)  
     serv = ModelService(init_file=tao_init_file, name=model_service_args.model_name.upper(), enable_jitter=model_service_args.enable_jitter, 
-                        plot=model_service_args.plot)
+                    plot=model_service_args.plot)
     serv.start()
+
+if __name__=="__main__":
+    main_loop = asyncio.new_event_loop()
+    main_loop.run_until_complete(main())
 
