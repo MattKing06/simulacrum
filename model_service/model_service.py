@@ -36,8 +36,6 @@ class ModelService:
         self.model_broadcast_socket = zmq.Context().socket(zmq.PUB)
         self.model_broadcast_socket.bind("tcp://*:{}".format(os.environ.get('MODEL_BROADCAST_PORT', 66666)))
         self.loop = asyncio.get_event_loop()
-        if not self.loop.is_running():
-            print('no running event loop in thread.')
         self.jitter_enabled = enable_jitter
         self.twiss_table = NTTable([("element", "s"), ("device_name", "s"),
                                        ("s", "d"), ("length", "d"), ("p0c", "d"),
@@ -50,6 +48,15 @@ class ModelService:
                               ("r41", "d"), ("r42", "d"), ("r43", "d"), ("r44", "d"), ("r45", "d"), ("r46", "d"),
                               ("r51", "d"), ("r52", "d"), ("r53", "d"), ("r54", "d"), ("r55", "d"), ("r56", "d"),
                               ("r61", "d"), ("r62", "d"), ("r63", "d"), ("r64", "d"), ("r65", "d"), ("r66", "d")])
+        self.loop = asyncio.get_event_loop()
+        self.loop.run_until_complete(self.create_initiail_pvs())
+        self.screens = self.get_screens()
+        self.bpms = self.get_bpms()
+        self.recalc_needed = False
+        self.pva_needs_refresh = False
+        self.need_zmq_broadcast = False
+    
+    async def create_initiail_pvs(self):
         initial_twiss_table, initial_rmat_table = self.get_twiss_table()
         sec, nanosec = divmod(float(time.time()), 1.0)
         initial_twiss_table = self.twiss_table.wrap(initial_twiss_table)
@@ -70,11 +77,7 @@ class ModelService:
         self.design_rmat_pv = SharedPV(nt=self.rmat_table, 
                            initial=initial_rmat_table,
                            loop=self.loop)
-        self.screens = self.get_screens()
-        self.bpms = self.get_bpms()
-        self.recalc_needed = False
-        self.pva_needs_refresh = False
-        self.need_zmq_broadcast = False
+        return
     
     def start(self):
         L.info("Starting %s Model Service.", self.name)
